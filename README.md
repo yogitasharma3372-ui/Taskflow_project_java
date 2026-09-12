@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 TaskFlow — Priority Task Scheduler, Spring REST API & Web Visualizer
 
 **TaskFlow** is a high-performance, priority-based task scheduling system written in Java. Built as a software engineering portfolio and interview project, TaskFlow demonstrates **from-scratch implementations of fundamental computer science data structures and algorithms** wrapped with a modern **Spring Boot REST API** and an interactive **Glassmorphism Web Dashboard**.
@@ -109,3 +110,7 @@ Once started, open **`http://localhost:8080`** in your browser to view the **Gla
 
 ## 📄 License
 MIT License. Created for technical interview and portfolio demonstration.
+=======
+# Taskflow_project_java
+it is a project in  java language for priority scheduling for cpu.....
+>>>>>>> 42cf2a232ec9d48e870ceb4678de2c2a164d2562
