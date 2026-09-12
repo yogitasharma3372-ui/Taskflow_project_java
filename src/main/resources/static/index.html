@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow — Priority Task Scheduler & Data Structures Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER NAVBAR -->
+        <header class="navbar glass">
+            <div class="brand">
+                <div class="logo-icon">⚡</div>
+                <div class="brand-text">
+                    <h1>TaskFlow</h1>
+                    <span class="badge">DSA Portfolio & REST API</span>
+                </div>
+            </div>
+
+            <!-- TRIE SEARCH AUTOCOMPLETE BAR -->
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="trieSearchInput" placeholder="Search tasks by prefix (Trie Autocomplete)..." autocomplete="off">
+                    <span class="search-tag">Trie O(L+K)</span>
+                </div>
+                <div id="autocompleteDropdown" class="autocomplete-dropdown glass hidden"></div>
+            </div>
+
+            <div class="header-actions">
+                <button id="btnUndo" class="btn btn-secondary glass" title="Undo Last Action (Stack Pop)">
+                    <span class="icon">↩</span> Undo
+                </button>
+                <button id="btnAddTask" class="btn btn-primary">
+                    <span class="icon">➕</span> Add Task
+                </button>
+                <button id="btnThemeToggle" class="btn btn-icon glass" title="Toggle Light/Dark Theme">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- STATS BANNER BAR -->
+        <div class="stats-banner glass">
+            <div class="stat-item">
+                <span class="stat-label">System Status</span>
+                <span class="stat-value text-success" id="healthStatus">● Healthy</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Next Highest Priority (MinHeap Root)</span>
+                <span class="stat-value text-accent" id="nextTaskPeek">Loading...</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Tasks</span>
+                <span class="stat-value" id="totalTasksCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Pending / Completed</span>
+                <span class="stat-value" id="pendingCompletedRatio">0 / 0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Server Uptime</span>
+                <span class="stat-value" id="serverUptime">0s</span>
+            </div>
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="nav-tabs glass">
+            <button class="tab-btn active" data-tab="boardTab">
+                <span class="tab-icon">📋</span> Task Board (Kanban)
+            </button>
+            <button class="tab-btn" data-tab="heapTab">
+                <span class="tab-icon">🌲</span> MinHeap Visualizer
+            </button>
+            <button class="tab-btn" data-tab="graphTab">
+                <span class="tab-icon">🔗</span> Dependency Graph View
+            </button>
+            <button class="tab-btn" data-tab="sortRaceTab">
+                <span class="tab-icon">⚡</span> Sort Race Panel
+            </button>
+            <button class="tab-btn" data-tab="historyTab">
+                <span class="tab-icon">📜</span> History Log (Queue)
+            </button>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+
+            <!-- TAB 1: KANBAN TASK BOARD -->
+            <section id="boardTab" class="tab-content active">
+                <div class="board-toolbar">
+                    <div class="filter-controls">
+                        <label>Sort By:</label>
+                        <select id="sortKeySelect" class="glass-select">
+                            <option value="priority">Priority (1 = Highest)</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="title">Title (Alphabetical)</option>
+                        </select>
+                        
+                        <label>Algorithm:</label>
+                        <select id="sortAlgoSelect" class="glass-select">
+                            <option value="merge">MergeSort (Stable O(N log N))</option>
+                            <option value="quick">QuickSort (In-Place Median-3)</option>
+                        </select>
+
+                        <button id="btnApplySort" class="btn btn-sm btn-secondary glass">Sort Tasks</button>
+                    </div>
+                    
+                    <div class="tag-filter-wrapper">
+                        <input type="text" id="tagSearchInput" placeholder="Filter by tag (HashMap index)..." class="glass-input">
+                        <button id="btnFilterTag" class="btn btn-sm btn-secondary glass">Filter Tag</button>
+                    </div>
+                </div>
+
+                <div class="kanban-grid">
+                    <!-- Column 1: Pending Tasks -->
+                    <div class="kanban-column glass">
+                        <div class="column-header">
+                            <h3>📌 Pending Tasks</h3>
+                            <span id="pendingCountBadge" class="count-badge">0</span>
+                        </div>
+                        <div id="pendingContainer" class="kanban-cards"></div>
+                    </div>
+
+                    <!-- Column 2: Next Up (Heap Top) -->
+                    <div class="kanban-column glass highlight-column">
+                        <div class="column-header">
+                            <h3>⭐ Highest Priority (MinHeap Root)</h3>
+                            <span class="count-badge badge-accent">1</span>
+                        </div>
+                        <div id="highestPriorityContainer" class="kanban-cards"></div>
+                    </div>
+
+                    <!-- Column 3: Completed Tasks -->
+                    <div class="kanban-column glass">
+                        <div class="column-header">
+                            <h3>✅ Completed History</h3>
+                            <span id="completedCountBadge" class="count-badge badge-success">0</span>
+                        </div>
+                        <div id="completedContainer" class="kanban-cards"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: MINHEAP BINARY TREE VISUALIZER -->
+            <section id="heapTab" class="tab-content">
+                <div class="visualizer-card glass">
+                    <div class="card-header-flex">
+                        <div>
+                            <h2>🌲 Custom MinHeap Binary Tree Visualizer</h2>
+                            <p class="subtitle">Array-backed Binary Min Heap representation with dynamic parent-child linkages \((2i+1, 2i+2)\).</p>
+                        </div>
+                        <button id="btnRefreshHeap" class="btn btn-sm btn-secondary glass">🔄 Refresh Tree</button>
+                    </div>
+
+                    <div class="heap-visual-container">
+                        <!-- SVG Tree Diagram -->
+                        <div class="svg-wrapper">
+                            <svg id="heapSvg" width="100%" height="400"></svg>
+                        </div>
+                        
+                        <!-- Array Representation -->
+                        <div class="heap-array-view">
+                            <h4>Heap Internal Array Representation:</h4>
+                            <div id="heapArrayContainer" class="heap-array-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: DEPENDENCY GRAPH & TOPOLOGICAL SORT -->
+            <section id="graphTab" class="tab-content">
+                <div class="visualizer-card glass">
+                    <div class="card-header-flex">
+                        <div>
+                            <h2>🔗 Task Dependency Graph & Topological Execution Order</h2>
+                            <p class="subtitle">Adjacency List Directed Graph & Kahn's BFS Algorithm with real-time Cycle Detection.</p>
+                        </div>
+                        <div class="btn-group">
+                            <button id="btnAddDependencyModalBtn" class="btn btn-sm btn-primary">➕ Add Dependency</button>
+                            <button id="btnComputeTopo" class="btn btn-sm btn-secondary glass">⚡ Run Topological Sort</button>
+                        </div>
+                    </div>
+
+                    <!-- Topological Sequence Banner -->
+                    <div id="topoSequenceBanner" class="topo-banner glass hidden"></div>
+
+                    <!-- SVG Graph Canvas -->
+                    <div class="graph-visual-container">
+                        <svg id="graphSvg" width="100%" height="450"></svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: SORTING ALGORITHM RACE PANEL -->
+            <section id="sortRaceTab" class="tab-content">
+                <div class="visualizer-card glass">
+                    <div class="card-header-flex">
+                        <div>
+                            <h2>⚡ Sorting Algorithm Race (MergeSort vs QuickSort)</h2>
+                            <p class="subtitle">Side-by-side benchmark comparison of time complexity, space complexity, comparisons, and stability.</p>
+                        </div>
+                        <button id="btnRunSortRace" class="btn btn-primary btn-glow">🚀 Start Algorithm Race!</button>
+                    </div>
+
+                    <div id="sortRaceMetricsGrid" class="race-grid">
+                        <!-- MergeSort Card -->
+                        <div class="race-card glass merge-card">
+                            <div class="race-card-header">
+                                <h3>Divide & Conquer MergeSort</h3>
+                                <span class="badge badge-blue">Stable O(N log N)</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Time Taken:</span>
+                                <strong id="mergeTime">0 ms</strong>
+                            </div>
+                            <div class="metric-row">
+                                <span>Auxiliary Space:</span>
+                                <strong>O(N)</strong>
+                            </div>
+                            <div class="metric-row">
+                                <span>Est. Comparisons:</span>
+                                <strong id="mergeComp">0</strong>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div id="mergeProgress" class="progress-bar-fill merge-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- QuickSort Card -->
+                        <div class="race-card glass quick-card">
+                            <div class="race-card-header">
+                                <h3>In-Place QuickSort</h3>
+                                <span class="badge badge-purple">Median-of-Three O(N log N)</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Time Taken:</span>
+                                <strong id="quickTime">0 ms</strong>
+                            </div>
+                            <div class="metric-row">
+                                <span>Auxiliary Space:</span>
+                                <strong>O(log N)</strong>
+                            </div>
+                            <div class="metric-row">
+                                <span>Est. Comparisons:</span>
+                                <strong id="quickComp">0</strong>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div id="quickProgress" class="progress-bar-fill quick-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="raceWinnerBanner" class="race-winner-banner glass hidden"></div>
+                </div>
+            </section>
+
+            <!-- TAB 5: TASK HISTORY LOG -->
+            <section id="historyTab" class="tab-content">
+                <div class="visualizer-card glass">
+                    <div class="card-header-flex">
+                        <div>
+                            <h2>📜 Task Activity History Log</h2>
+                            <p class="subtitle">Custom Queue Data Structure preserving chronological FIFO completion records.</p>
+                        </div>
+                    </div>
+
+                    <div class="history-list-wrapper">
+                        <div id="historyList" class="history-feed"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL 1: ADD TASK -->
+    <div id="addTaskModal" class="modal-overlay hidden">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h2>➕ Add New Task</h2>
+                <button class="modal-close" id="btnCloseAddModal">&times;</button>
+            </div>
+            <form id="addTaskForm">
+                <div class="form-group">
+                    <label>Task Title *</label>
+                    <input type="text" id="taskTitleInput" required placeholder="e.g. Implement Graph Data Structure" class="glass-input">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="taskDescInput" rows="3" placeholder="Short summary of technical tasks..." class="glass-input"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Priority (1 = Highest, 5 = Lowest) *</label>
+                        <select id="taskPriorityInput" class="glass-select" required>
+                            <option value="1">1 - Urgent / Critical</option>
+                            <option value="2" selected>2 - High Priority</option>
+                            <option value="3">3 - Medium Priority</option>
+                            <option value="4">4 - Low Priority</option>
+                            <option value="5">5 - Minimal Priority</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Deadline Date & Time</label>
+                        <input type="datetime-local" id="taskDeadlineInput" class="glass-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tags (Comma Separated)</label>
+                    <input type="text" id="taskTagsInput" placeholder="e.g. dsa, core, urgent" class="glass-input">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary glass" id="btnCancelAdd">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD DEPENDENCY EDGE -->
+    <div id="addDepModal" class="modal-overlay hidden">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h2>🔗 Add Task Dependency Edge</h2>
+                <button class="modal-close" id="btnCloseDepModal">&times;</button>
+            </div>
+            <form id="addDepForm">
+                <div class="form-group">
+                    <label>Dependent Task (Task that cannot start yet) *</label>
+                    <select id="depTaskIdSelect" class="glass-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Prerequisite Task (Task that MUST be completed first) *</label>
+                    <select id="depPrereqIdSelect" class="glass-select" required></select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary glass" id="btnCancelDep">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Edge & Verify Acyclic</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="config.js"></script>
+    <script src="app.js?v=1.1"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+/target/
+/maven/
+/maven.zip
+*.log
+.DS_Store
+.idea/
+*.iml
+*.class
+demo_tasks.json
+tasks.json
